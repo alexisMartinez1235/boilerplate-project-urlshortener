@@ -52,7 +52,7 @@ shorturl.use((req, res, next) => {
 
   dns.lookup(original_url.hostname,
     options, (err, addresses) => {
-      if (err || addresses === []) return res.status(200).json({
+      if (err || addresses === []) return res.status(400).json({
         error: 'invalid url',
         message: err,
       });
