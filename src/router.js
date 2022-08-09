@@ -16,51 +16,44 @@ mongoose.connect(mongo_uri, {
   useUnifiedTopology: true
 });
 
-function formatURL(req, res, next) {
-  const { url } = req.body;
-
-  if (/.*:\/\/.*\..*\..{3}/.test(url)) {
-    return next();
-  }
-  console.log(url);
-  
-  return res.status(500).json({
-    error: 'invalid url'
-  });
-}
 
 function validateURL(req, res, next) {
-  const { url: urlToValidate } = req.body;
+  const { url } = req.body;
   const options = {
-    family: 6,
+    family: 4,
     // hints: dns.ADDRCONFIG | dns.V4MAPPED,
     all: true
   };
-  req.app.locals.original_url = urlToValidate
-    .replace(/(http?.:\/\/)?(www.)?/i, '')
-    .replace(/\/$/i, '');    
+  try {
+    req.app.locals.original_url = new URL(url, "https://example.com");
+  } catch(err) {    
+    return res.status(400).json({
+      error: 'invalid url'  
+    });
+  }
+  
   const { original_url } = req.app.locals;
+  
+  // console.log(original_url);
   
   // console.log(`url:${original_url}`);
 
-  dns.lookup(original_url, options, (err, addresses) => {
-    if (err) return res.status(500).json({ err });
-    if (addresses === []) return res.status(500).json({err: "invaild url"});
-    // console.log('addresses: %j', addresses);
-    return next();
-  });
+  dns.lookup(original_url.hostname,
+    options, (err, addresses) => {
+      if (err || addresses === []) return res.status(400).json({
+        error: 'invalid url',
+        message: err,
+      });
+      // console.log('addresses: %j', addresses);
+      return next();
+    });
 }
 
 function sendResponse(req, res, next) {
   const { url } = req.app.locals;
   const { short_url, original_url } = req.app.locals.url;
            
-  // console.log(url);
-
-  res.status(500).json({
-    short_url,
-    original_url: `https://${original_url}`
-  });
+  res.status(200).json({ short_url, original_url });
 }
 
 router.get('/', (req, res) => {
@@ -89,11 +82,11 @@ router.get('/shorturl/:short_url?', (req, res, next) => {
       });
     }
     req.app.locals.url = url;
-    return res.status(200).redirect(`https://${url.original_url}`);
+    return res.status(200).redirect(url.original_url);
   });
 }, sendResponse);
 
-router.post('/shorturl', validateURL, formatURL, (req, res, next) => {
+router.post('/shorturl', validateURL, (req, res, next) => {
   const { original_url } = req.app.locals;
   
   Url.findOne({ original_url }, (errFindIfExists, urlAlreadyExists) => {
