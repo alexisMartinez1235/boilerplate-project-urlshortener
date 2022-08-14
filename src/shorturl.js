@@ -12,7 +12,7 @@ const {
 shorturl.get('/:short_url?', (req, res, next) => {
   const { short_url } = req.params;
     
-  console.log(`short_url: ${short_url}`);
+  // console.log(`short_url: ${short_url}`);
   
   Url.findOne({ short_url }, (err, url) => {
     if (err) return res.status(500).json({
@@ -31,6 +31,9 @@ shorturl.get('/:short_url?', (req, res, next) => {
 // validate url
 shorturl.use((req, res, next) => {
   const { url } = req.body;
+  
+  console.log(url);
+  
   const options = {
     family: 4,
     // hints: dns.ADDRCONFIG | dns.V4MAPPED,
@@ -39,22 +42,21 @@ shorturl.use((req, res, next) => {
   try {
     req.app.locals.original_url = new URL(url, "https://example.com");
   } catch(err) {    
-    return res.status(400).json({
+    return res.status(200).json({
       error: 'invalid url'  
     });
   }
   
   const { original_url } = req.app.locals;
   
-  // console.log(original_url);
+  console.log(original_url);
   
   // console.log(`url:${original_url}`);
 
   dns.lookup(original_url.hostname,
     options, (err, addresses) => {
-      if (err || addresses === []) return res.status(400).json({
+      if (err || addresses === []) return res.status(200).json({
         error: 'invalid url',
-        message: err,
       });
       // console.log('addresses: %j', addresses);
       return next();
